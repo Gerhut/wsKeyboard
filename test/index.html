@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=5.0, user-scalable=no">
+  <title>wsKeyboard test</title>
+  <script src="wsKeyboard.js"></script>
+  <script>
+    wsKeyboard.connect();
+    function press(code) {
+      if (wsKeyboard.online()) wsKeyboard.press(code);
+    }
+  </script>
+  <style>
+    body {
+      background-color: blue;
+    }
+    div {
+      position: absolute;
+      background-color: red;
+      width: 50%;
+      height: 100%;
+      left: 25%;
+      top: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="red"></div>
+  <script>
+    document.ontouchstart = function (event) {
+      event.preventDefault();
+      press(68);
+    }
+
+    document.getElementById('red').ontouchstart = function (event) {
+      event.stopPropagation();
+      press(70);
+    }
+  </script>
+</body>
+</html>
