@@ -3,6 +3,16 @@ wsKeyboard
 
 Remote Keyboard Controller based on WebSocket
 
-Built on Python 2.7.4
+Requirements
+------------
 
-[pywin32](http://sourceforge.net/projects/pywin32/) is required.
+- Built on Python 2.7.4
+- [pywin32](http://sourceforge.net/projects/pywin32/) is required.
+
+WebSocket Transform Protocol
+----------------------------
+
+Each message contains 2 bytes:
+
+1. 01 -> Key down, FE-> Key up
+2. Key code
