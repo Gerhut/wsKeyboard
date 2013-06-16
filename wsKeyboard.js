@@ -12,7 +12,8 @@
         'error': error,
         'disconnected': disconnected,
         'connect': connect,
-        'press': press,
+        'keyDown': keyDown,
+        'keyUp': keyUp,
         'disconnect': disconnect,
       };
 
@@ -21,14 +22,17 @@
   }
 
   function connected(callback) {
+    onconnected = callback;
     return wsKeyboard;
   }
 
   function error(callback) {
+    onerror = callback;
     return wsKeyboard;
   }
   
   function disconnected(callback) {
+    ondisconnected = callback;
     return wsKeyboard;
   }
 
@@ -39,24 +43,30 @@
     
     ws.onopen = function () {
       isonline = true;
-      if (typeof onconnected === 'Function')
+      if (typeof onconnected === 'function')
         onconnected();
     };
-    ws.onerror = function () {
-      if (typeof onerror === 'Function')
+    ws.onerror = function (event) {
+      console.log(event);
+      if (typeof onerror === 'function')
         onerror();
     };
     ws.onclose = function () {
       isonline = false;
-      if (typeof ondisconnected === 'Function')
+      if (typeof ondisconnected === 'function')
         ondisconnected();
     };
 
     return wsKeyboard;
   }
 
-  function press(code) {
-    ws.send(code.toString());
+  function keyDown(code) {
+    ws.send('\x01' + String.fromCharCode(code));
+    return wsKeyboard;
+  }
+
+  function keyUp(code) {
+    ws.send('\xFE' + String.fromCharCode(code));
     return wsKeyboard;
   }
 

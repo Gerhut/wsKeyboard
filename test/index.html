@@ -2,41 +2,88 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=5.0, user-scalable=no">
+  <meta name="viewport" content="width=500, user-scalable=no">
   <title>wsKeyboard test</title>
   <script src="wsKeyboard.js"></script>
-  <script>
-    wsKeyboard.connect();
-    function press(code) {
-      if (wsKeyboard.online()) wsKeyboard.press(code);
-    }
-  </script>
   <style>
     body {
-      background-color: blue;
+      margin: 0;
+    }
+    button {
+      width: 50px;
+      height: 50px;
+    }
+    button.down {
+      font-size: 150%;
     }
     div {
-      position: absolute;
-      background-color: red;
-      width: 50%;
-      height: 100%;
-      left: 25%;
-      top: 0;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <div id="red"></div>
-  <script>
-    document.ontouchstart = function (event) {
-      event.preventDefault();
-      press(68);
-    }
+<script>
 
-    document.getElementById('red').ontouchstart = function (event) {
-      event.stopPropagation();
-      press(70);
+(function (doc, body) {
+  ["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"]
+    .forEach(function (keyString) {
+      var div = doc.createElement('div');
+      for (var i = 0, l = keyString.length; i < l; i++) {
+        var keyChar = keyString.charAt(i),
+            keyCode = keyString.charCodeAt(i),
+            button = doc.createElement('button');
+        button.innerText = keyChar;
+        button.setAttribute('data-code', keyCode);
+        button.disabled = true;
+        div.appendChild(button);
+      }
+      body.appendChild(div);
+    });
+}) (document, document.body);
+
+(function (events, wskb) {
+  document.addEventListener(events.down, function(event) {
+    if ('disabled' in event.target && !event.target.disabled ) {
+      var code = event.target.getAttribute('data-code');
+      console.log(code);
     }
-  </script>
+  });
+  document.addEventListener(events.up, function(event) {
+    if ('disabled' in event.target && !event.target.disabled ) {
+      var code = event.target.getAttribute('data-code');
+      console.log(code);
+    }
+  });
+}) ((function () {
+  if ('ontouchstart' in document) {
+    return {
+      'down': 'touchstart',
+      'up': 'touchend'
+    }
+  } else if ('onmspointerdown' in document) {
+    return {
+      'down': 'mspointerdown',
+      'up': 'mspointerup'
+    }
+  } else {
+    return {
+      'down': 'mousedown',
+      'up': 'mouseup'
+    }
+  }
+}) (),
+wsKeyboard.connected(function () {
+  Array.prototype.forEach.call(document.getElementsByTagName('button'),
+    function(button) {
+      button.disabled = false;
+    });
+}).disconnected(function () {
+  Array.prototype.forEach.call(document.getElementsByTagName('button'),
+    function(button) {
+      button.disabled = true;
+    });
+}).connect());
+
+</script>
 </body>
 </html>
