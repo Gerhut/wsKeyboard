@@ -14,7 +14,7 @@
         'connect': connect,
         'keyDown': keyDown,
         'keyUp': keyUp,
-        'disconnect': disconnect,
+        'disconnect': disconnect
       };
 
   function online() {
@@ -30,7 +30,7 @@
     onerror = callback;
     return wsKeyboard;
   }
-  
+
   function disconnected(callback) {
     ondisconnected = callback;
     return wsKeyboard;
@@ -38,9 +38,9 @@
 
   function connect(port, hostname) {
     if (typeof port === 'undefined') port = DEFAULT_PORT;
-    if (typeof hostname === 'undefined') hostname = location.hostname
+    if (typeof hostname === 'undefined') hostname = location.hostname;
     ws = new WebSocket('ws://' + hostname + ':' + port + '/');
-    
+
     ws.onopen = function () {
       isonline = true;
       if (typeof onconnected === 'function')
@@ -66,7 +66,7 @@
   }
 
   function keyUp(code) {
-    ws.send('\xFE' + String.fromCharCode(code));
+    ws.send('\x7E' + String.fromCharCode(code));
     return wsKeyboard;
   }
 
@@ -74,7 +74,6 @@
     ws.close();
     return wsKeyboard;
   }
-  
 
   if ('module' in global && module.export) {
     module.export = wsKeyboard;

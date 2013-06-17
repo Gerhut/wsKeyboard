@@ -1,157 +1,122 @@
-import socket
-import struct
-import base64, hashlib
-import win32api, win32con
+from hashlib import sha1
+from base64 import b64encode as base64
+from struct import pack
+from struct import unpack
+from socket import gethostbyname_ex
+from socket import gethostname
+from SocketServer import TCPServer
+from BaseHTTPServer import BaseHTTPRequestHandler
 
-cache = ''
-def wsKeyboardServer(port):
-	
-	version = 0
+__all__ = ['start_wsKeyboard_server']
 
-	def handshake(client):
-		data = client.recv(1024)
-		
-		if len(data) == 0:
-			return False
-		
-		header, cache = data.split('\r\n\r\n', 1)
-		header = header.split('\r\n')
+DEFAULT_PORT = 13579
 
-		path = header[0].split(' ')[1]
+'''DANGEROUS: use unpublished property: BaseHTTPRequestHandler.close_connection
+'''
 
-		headers = dict()
-		for line in header[1:]:
-			key, value = line.split(': ', 1)
-			headers[key] = value
-		if headers['Upgrade'].lower() != 'websocket':
-			return False
 
-		res_headers = {
-			'Connection': headers['Connection'],
-			'Upgrade': headers['Upgrade']
-		}
+class WebSocketRequestHandler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
 
-		location = 'ws://' + headers['Host'] + path
-		
-		if 'Sec-WebSocket-Key' in headers:
-			version = 2
-			key = headers['Sec-WebSocket-Key'].strip()
-			guid = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
-			res_headers['Sec-WebSocket-Accept'] = \
-				base64.b64encode(hashlib.sha1(key + guid).digest())
-			res_content = ''
-		elif 'Sec-WebSocket-Key1' in headers \
-			and 'Sec-WebSocket-Key2' in headers:
-			version = 1
-			res_headers.update({
-				'Sec-WebSocket-Origin': headers['Origin'],
-				'Sec-WebSocket-Location': location
-			})
+    def header_13(self):
+        websocket_guid = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
+        websocket_key = self.headers['Sec-WebSocket-Key']
+        websocket_accept = sha1(websocket_key + websocket_guid).digest()
+        websocket_accept = base64(websocket_accept)
+        self.send_response(101, 'Switching Protocols')
+        self.send_header('Connection', 'Upgrade')
+        self.send_header('Upgrade', 'WebSocket')
+        self.send_header('Sec-WebSocket-Accept', websocket_accept)
+        self.end_headers()
 
-			def number_space(key):
-				number = 0
-				space = 0
-				for c in key:
-					if c.isdigit():
-						number = number * 10 + int(c)
-					elif c == ' ':
-						space += 1
-				return number / space
+    def handle_13(self):
+        while True:
+            data = ''
+            fin = False
+            while not fin:
+                b = self.request.recv(1)
+                if len(b) == 0:
+                    return
+                else:
+                    b = ord(b)
+                fin = bool(b >> 7)
+                '''
+                *  0 denotes a continuation frame
+                *  1 denotes a text frame
+                *  2 denotes a binary frame
+                *  8 denotes a connection close
+                *  9 denotes a ping
+                *  A denotes a pong
+                '''
+                data_type = b & 0x0F
+                b = ord(self.request.recv(1))
+                mask = bool(b >> 7)
+                payload_length = b & 0x7F
+                if payload_length == 126:
+                    payload_length, = unpack('H', self.request.recv(2))
+                elif payload_length == 127:
+                    payload_length, = unpack('Q', self.request.recv(8))
+                if mask:
+                    mask = unpack('BBBB', self.request.recv(4))
+                frame_data = unpack('B' * payload_length, self.request.recv(payload_length))
+                for index, value in enumerate(frame_data):
+                    data += chr(value ^ mask[index % 4])
+            if data_type == 1:
+                if hasattr(self, 'do_TEXT'):
+                    do_TEXT(data)
+                print 'Receive text data: ' + repr(data)
+            elif data_type == 2:
+                if hasattr(self, 'do_BINARY'):
+                    do_BINARY(data)
+                print 'Receive binary data: ' + repr(data)
+            elif data_type == 8:
+                print 'Connection close.'
+                break
 
-			key1 = number_space(headers["Sec-WebSocket-Key1"])
-			key2 = number_space(headers["Sec-WebSocket-Key2"])
-			content = cache[:8]
-			cache = cache[8:]
-			key = struct.pack(">ii", key1, key2) + content
-			res_content = hashlib.md5(key).digest()
-		else:
-			version = 0
-			res_headers.update({
-				'WebSocket-Origin': headers['Origin'],
-				'WebSocket-Location': location
-			})
 
-		res_data = 'HTTP/1.1 101 Web Socket Protocol Handshake\r\n'
-		for item in res_headers.items():
-			res_data += '%s: %s\r\n' % item
+    def do_GET(self):
+        if self.headers['Connection'] != 'Upgrade' \
+                or self.headers['Upgrade'].lower() != 'websocket':
+            self.send_error(400, 'Invalid WebSocket request.')
+            return
 
-		res_data += '\r\n' + res_content
-		client.send(res_data)
-		return True
+        if self.headers['Sec-WebSocket-Version'] in ('13'):
+            self.webSocket_version = self.headers['Sec-WebSocket-Version']
 
-	def recieve(client):
-		while True:
-			if version < 2:
-				in_data = False
-				data = ''
-				while True:
-					cache = client.recv(1)
-					if len(cache) == 0:
-						break
-					if in_data:
-						if cache == '\xFF':
-							if len(data) == 0:
-								break
-							press(int(data))
-							in_data = False
-							data = ''
-						else:
-							data += cache[0]
-					elif cache == '\x00':
-						in_data = True
-				break
-			else:
-				try:
-					pData = client.recv(1024)
-					if len(pData) == 0:
-						break
-				except:
-					break
-				else:
-					code_length = ord(pData[1]) & 127
-					if code_length == 126:
-						masks = pData[4:8]
-						data = pData[8:]
-					elif code_length == 127:
-						masks = pData[10:14]
-						data = pData[14:]
-					else:
-						masks = pData[2:6]
-						data = pData[6:]
-					
-					raw_str = ""
-					i = 0
-					for d in data:
-						raw_str += chr(ord(d) ^ ord(masks[i%4]))
-						i += 1
+        if hasattr(self, 'header_' + str(self.webSocket_version)) \
+                and hasattr(self, 'handle_' + str(self.webSocket_version)):
+            header = getattr(self, 'header_' + str(self.webSocket_version))
+            handle = getattr(self, 'handle_' + str(self.webSocket_version))
+            header()
+            handle()
+            self.close_connection = 1
+        else:
+            self.send_error(400, 'Unsupported WebSocket version.')
+            return
 
-					press(int(raw_str))
 
-	def press(code):
-		print 'press', code
-		win32api.keybd_event(code, 0, 0, 0)
-		win32api.Sleep(20)
-		win32api.keybd_event(code, 0, win32con.KEYEVENTF_KEYUP, 0)
+def get_addresses(address_list=gethostbyname_ex(gethostname())):
+    for address in address_list:
+        if isinstance(address, str):
+            yield address
+        elif isinstance(address, list):
+            for sub_address in get_addresses(address):
+                yield sub_address
 
-	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sock.bind(("", port))
-	sock.listen(1)
 
-	while True:
-		print 'Listening on port %d' % (port,)
-		connection, address = sock.accept()
-		print address, ' connected.'
-		if(not handshake(connection)):
-			print address, 'Invalid WebSocket.'
-			continue
-		recieve(connection)
-		print address, ' disconnected.'
-		connection.close()
+def start_wsKeyboard_server(port=DEFAULT_PORT):
+
+    httpd = TCPServer(('', port), WebSocketRequestHandler)
+
+    for address in get_addresses():
+        print 'ws://%s:%d/' % (address, port)
+
+    httpd.serve_forever()
 
 if __name__ == '__main__':
-	try:
-		port = input('Port: ')
-	except Exception:
-		port = 13579
+    try:
+        port = input('Port(%d): ' % (DEFAULT_PORT,))
+    except SyntaxError:
+        port = DEFAULT_PORT
 
-	wsKeyboardServer(port)
+    start_wsKeyboard_server(port)

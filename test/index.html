@@ -45,13 +45,13 @@
   document.addEventListener(events.down, function(event) {
     if ('disabled' in event.target && !event.target.disabled ) {
       var code = event.target.getAttribute('data-code');
-      console.log(code);
+      wsKeyboard.keyDown(code);
     }
   });
   document.addEventListener(events.up, function(event) {
     if ('disabled' in event.target && !event.target.disabled ) {
       var code = event.target.getAttribute('data-code');
-      console.log(code);
+      wsKeyboard.keyUp(code);
     }
   });
 }) ((function () {

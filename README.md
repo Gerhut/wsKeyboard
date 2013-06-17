@@ -14,5 +14,5 @@ WebSocket Transform Protocol
 
 Each message contains 2 bytes:
 
-1. 01 -> Key down, FE-> Key up
+1. 01 -> Key down, 7F-> Key up
 2. Key code
