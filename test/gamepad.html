@@ -11,34 +11,56 @@
       -webkit-user-select: none;
     }
     button {
+      position: fixed;
       width: 50px;
       height: 50px;
+      font-size: 18px;
+      font-weight: bold;
     }
-    div {
-      text-align: center;
+    #up {
+      left: 50px;
+      bottom: 100px;
+    }
+    #right {
+      left: 100px;
+      bottom: 50px;
+    }
+    #down {
+      left: 50px;
+      bottom: 0px;
+    }
+    #left {
+      left: 0px;
+      bottom: 50px;
+    }
+    #select {
+      right: 75px;
+      bottom: 75px;
+    }
+    #start {
+      right: 0px;
+      bottom: 75px;
+    }
+    #b {
+      right: 75px;
+      bottom: 0px;
+    }
+    #a {
+      right: 0px;
+      bottom: 0px;
     }
   </style>
 </head>
 <body>
+  <button id="up" data-code="38">↑</button>
+  <button id="right" data-code="39">→</button>
+  <button id="down" data-code="40">↓</button>
+  <button id="left" data-code="37">←</button>
+  <button id="select" data-code="17">选</button>
+  <button id="start" data-code="13">开</button>
+  <button id="b" data-code="88">Ｂ</button>
+  <button id="a" data-code="90">Ａ</button>
 <script>
-
-(function (doc, body) {
-  ["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"]
-    .forEach(function (keyString) {
-      var div = doc.createElement('div');
-      for (var i = 0, l = keyString.length; i < l; i++) {
-        var keyChar = keyString.charAt(i),
-            keyCode = keyString.charCodeAt(i),
-            button = doc.createElement('button');
-        button.innerText = keyChar;
-        button.setAttribute('data-code', keyCode);
-        button.disabled = true;
-        div.appendChild(button);
-      }
-      body.appendChild(div);
-    });
-}) (document, document.body);
-
 (function (events, wskb) {
   document.addEventListener(events.down, function(event) {
     if ('disabled' in event.target && !event.target.disabled ) {
@@ -83,6 +105,10 @@ wsKeyboard.connected(function () {
     });
 }).connect());
 
+Array.prototype.forEach.call(document.getElementsByTagName('button'),
+  function(button) {
+    button.disabled = true;
+  });
 </script>
 </body>
 </html>

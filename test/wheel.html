@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>wsKeyboard test</title>
+  <script src="wsKeyboard.js"></script>
+  <style>
+    body {
+      margin: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -ms-touch-action: none;
+    }
+    div {
+      border: 10px solid black;
+      border-radius: 200px;
+      position: fixed;
+      width: 400px;
+      height: 400px;
+      left: 50%;
+      top: 50%;
+      margin-left: -200px;
+      margin-top: -200px;
+      font-size: 50px;
+      text-align: center;
+      line-height: 400px;
+      vertical-align: middle;
+      -webkit-transform-origin: center;
+    }
+    div.disabled {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="disabled">Wheel</div>
+  <script>
+var div = document.getElementsByTagName('div')[0];
+(function (wskb) {
+  var currentOrientation
+  window.addEventListener('deviceorientation', function(event) {
+    if (div.className) return;
+    var orientation = event.beta;
+    div.style.webkitTransform = 'rotate(' + orientation + 'deg)';
+    if (orientation < -30) {
+      orientation = 39;
+    } else if (orientation > 30) {
+      orientation = 37;
+    } else {
+      orientation = 0;
+    }
+
+    if (currentOrientation != orientation) {
+      if (currentOrientation != 0) wsKeyboard.keyUp(currentOrientation);
+      currentOrientation = orientation;
+      if (currentOrientation != 0) wsKeyboard.keyDown(currentOrientation);
+    }
+  });
+  document.addEventListener('touchstart', function() {
+    if (div.className) return;
+    wsKeyboard.keyDown(90);
+  });
+  document.addEventListener('touchend', function() {
+    if (div.className) return;
+    wsKeyboard.keyUp(90);
+  });
+}) (wsKeyboard.connected(function () {
+      div.className = '';
+    }).disconnected(function () {
+      div.className = 'disabled';
+    }).connect());
+  </script>
+</body>
+</html>

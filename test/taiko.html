@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>wsKeyboard test</title>
+  <script src="wsKeyboard.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background-color: #50C8FA;
+      -webkit-user-select: none;
+      -ms-touch-action: none;
+    }
+    button {
+      background-color: #FA3C1E;
+      border-radius: 200px;
+      position: fixed;
+      width: 400px;
+      height: 400px;
+      left: 50%;
+      top: 50%;
+      margin-left: -200px;
+      margin-top: -200px;
+    }
+    button:disabled {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <button disabled></button>
+  <script>
+var button = document.getElementsByTagName('button')[0];
+(function (events, wskb) {
+  document.addEventListener(events.down, function(event) {
+    if (button.disabled) return;
+    var curX = event.pageX || event.targetTouches[0].pageX,
+        isLeft = curX < document.width / 2;
+    if (event.target === button) {
+      wsKeyboard.keyDown(isLeft ? 70 : 74);
+    } else {
+      wsKeyboard.keyDown(isLeft ? 68 : 75);
+    }
+    event.preventDefault();
+  });
+  document.addEventListener(events.up, function(event) {
+    if (button.disabled) return;
+    var curX = event.pageX || event.targetTouches[0].pageX,
+        isLeft = curX < document.width / 2;
+    if (event.target === button) {
+      wsKeyboard.keyUp(isLeft ? 70 : 74);
+    } else {
+      wsKeyboard.keyUp(isLeft ? 68 : 75);
+    }
+  });
+}) ((function () {
+  if ('ontouchstart' in document) {
+    return {
+      'down': 'touchstart',
+      'up': 'touchend'
+    }
+  } else if ('onmspointerdown' in document) {
+    return {
+      'down': 'MSPointerDown',
+      'up': 'MSPointerUp'
+    }
+  } else {
+    return {
+      'down': 'mousedown',
+      'up': 'mouseup'
+    }
+  }
+}) (),
+wsKeyboard.connected(function () {
+  button.disabled = false;
+}).disconnected(function () {
+  button.disabled = true;
+}).connect());
+  </script>
+</body>
+</html>

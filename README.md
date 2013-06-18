@@ -3,9 +3,6 @@ wsKeyboard
 
 Remote Keyboard Controller based on WebSocket
 
-Requirements
-------------
-
 - Built on Python 2.7
 
 WebSocket Transform Protocol
