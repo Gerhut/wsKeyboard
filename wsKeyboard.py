@@ -1,13 +1,13 @@
 from hashlib import sha1
 from base64 import b64encode as base64
-from struct import pack
+from ctypes import windll
 from struct import unpack
 from socket import gethostbyname_ex
 from socket import gethostname
 from SocketServer import TCPServer
 from BaseHTTPServer import BaseHTTPRequestHandler
 
-__all__ = ['start_wsKeyboard_server']
+__all__ = ['WsKeyboardRequestHandler', 'start_wsKeyboard_server']
 
 DEFAULT_PORT = 13579
 
@@ -15,7 +15,15 @@ DEFAULT_PORT = 13579
 '''
 
 
-class WebSocketRequestHandler(BaseHTTPRequestHandler):
+def key_down(code):
+    windll.user32.keybd_event(code, 0, 0, 0)
+
+
+def key_up(code):
+    windll.user32.keybd_event(code, 0, 2, 0)
+
+
+class WsKeyboardRequestHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     def header_13(self):
@@ -30,49 +38,23 @@ class WebSocketRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def handle_13(self):
-        while True:
-            data = ''
-            fin = False
-            while not fin:
-                b = self.request.recv(1)
-                if len(b) == 0:
-                    return
-                else:
-                    b = ord(b)
-                fin = bool(b >> 7)
-                '''
-                *  0 denotes a continuation frame
-                *  1 denotes a text frame
-                *  2 denotes a binary frame
-                *  8 denotes a connection close
-                *  9 denotes a ping
-                *  A denotes a pong
-                '''
-                data_type = b & 0x0F
-                b = ord(self.request.recv(1))
-                mask = bool(b >> 7)
-                payload_length = b & 0x7F
-                if payload_length == 126:
-                    payload_length, = unpack('H', self.request.recv(2))
-                elif payload_length == 127:
-                    payload_length, = unpack('Q', self.request.recv(8))
-                if mask:
-                    mask = unpack('BBBB', self.request.recv(4))
-                frame_data = unpack('B' * payload_length, self.request.recv(payload_length))
-                for index, value in enumerate(frame_data):
-                    data += chr(value ^ mask[index % 4])
-            if data_type == 1:
-                if hasattr(self, 'do_TEXT'):
-                    do_TEXT(data)
-                print 'Receive text data: ' + repr(data)
-            elif data_type == 2:
-                if hasattr(self, 'do_BINARY'):
-                    do_BINARY(data)
-                print 'Receive binary data: ' + repr(data)
-            elif data_type == 8:
-                print 'Connection close.'
-                break
-
+        bytes = self.request.recv(2)
+        if len(bytes) == 0:
+            return False
+        opcode = ord(bytes[0]) & 0x0F
+        if opcode == 1:
+            if ord(bytes[1]) >> 7 == 1:
+                bytes = unpack('BBBBBB', self.request.recv(6))
+                data = (bytes[0] ^ bytes[4], bytes[1] ^ bytes[5])
+            else:
+                data = unpack('BB', self.request.recv(2))
+            if data[0] == 1:
+                key_down(data[1])
+            elif data[0] == 126:
+                key_up(data[1])
+        elif opcode == 8:
+            return False
+        return True
 
     def do_GET(self):
         if self.headers['Connection'] != 'Upgrade' \
@@ -88,7 +70,8 @@ class WebSocketRequestHandler(BaseHTTPRequestHandler):
             header = getattr(self, 'header_' + str(self.webSocket_version))
             handle = getattr(self, 'handle_' + str(self.webSocket_version))
             header()
-            handle()
+            while handle():
+                pass
             self.close_connection = 1
         else:
             self.send_error(400, 'Unsupported WebSocket version.')
@@ -106,7 +89,7 @@ def get_addresses(address_list=gethostbyname_ex(gethostname())):
 
 def start_wsKeyboard_server(port=DEFAULT_PORT):
 
-    httpd = TCPServer(('', port), WebSocketRequestHandler)
+    httpd = TCPServer(('', port), WsKeyboardRequestHandler)
 
     for address in get_addresses():
         print 'ws://%s:%d/' % (address, port)
@@ -114,9 +97,4 @@ def start_wsKeyboard_server(port=DEFAULT_PORT):
     httpd.serve_forever()
 
 if __name__ == '__main__':
-    try:
-        port = input('Port(%d): ' % (DEFAULT_PORT,))
-    except SyntaxError:
-        port = DEFAULT_PORT
-
-    start_wsKeyboard_server(port)
+    start_wsKeyboard_server()

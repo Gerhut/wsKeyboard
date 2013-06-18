@@ -41,9 +41,4 @@ def start_web_server(port=DEFAULT_PORT):
     httpd.serve_forever()
 
 if __name__ == '__main__':
-    try:
-        port = input('Port(%d): ' % (DEFAULT_PORT,))
-    except SyntaxError:
-        port = DEFAULT_PORT
-
-    start_web_server(port)
+    start_web_server()
